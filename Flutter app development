@@ -1,0 +1,199 @@
+Prerequisites:
+
+Install Flutter
+
+Create an Unsplash API key by registering on the Unsplash Developers page
+For simplicity, no API key is required for GitHub's public gists.
+
+Project Setup
+1. Create a Flutter Project:
+flutter create flutter_app
+cd flutter_app
+
+2. Installing Dependencies: Add the following dependencies in your pubspec.yaml file:
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^0.13.3
+  cached_network_image: ^3.2.0
+  sqflite: ^2.0.0+4
+  path_provider: ^2.0.11
+  provider: ^6.0.3
+  shared_preferences: ^2.0.15
+
+Then, run:
+
+flutter pub get
+Main File Structure
+
+I'll create separate files to keep things organized:
+
+main.dart: Entry point of the app.
+
+screens/splash_screen.dart: For the splash screen.
+
+screens/home_screen.dart: Contains the bottom tab navigation.
+
+screens/repo_list_screen.dart: Shows the list of GitHub repositories.
+
+screens/gallery_screen.dart: Displays Unsplash images in a grid.
+
+screens/full_image_screen.dart: Shows the full-screen image with bookmark functionality.
+
+services/api_service.dart: Handles all API calls.
+
+models/repo_model.dart, models/image_model.dart: Models for API data.
+
+utils/cache_helper.dart: Manages local caching.
+
+Code
+
+1. main.dart
+This file sets up the app structure and navigates to the Splash Screen.
+import 'package:flutter/material.dart';
+import 'screens/splash_screen.dart';
+void main() {
+  runApp(MyA());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter App',
+      theme: ThemeData(primarySwatch: Colors.blue),
+      home: SplashScreen(),
+    );
+  }
+}
+
+2. splash_screen.dart
+
+import 'package:flutter/material.dart';
+import 'home_screen.dart';
+
+class SplashScreen extends StatefulWidget {
+  @override
+  _SplashScreenState createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _navigateToHome();
+  }
+
+  _navigateToHome() async {
+    await Future.delayed(Duration(seconds: 3)); // Simulate loading time
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomeScreen()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+3. home_screen.dart
+
+This file contains the bottom navigation setup with RepoListScreen and GalleryScreen.
+
+import 'package:flutter/material.dart';
+import 'repo_list_screen.dart';
+import 'gallery_screen.dart';
+
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    RepoListScreen(),
+    GalleryScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        items: [
+          BottomNavigationBarItem(icon: Icon(Icons.book), label: "Repos"),
+          BottomNavigationBarItem(icon: Icon(Icons.photo), label: "Gallery"),
+        ],
+        onTap: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+      ),
+    );
+  }
+}
+
+4. api_service.dart
+
+Create an ApiService class to handle API requests for GitHub Gists and Unsplash images.
+
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/repo_model.dart';
+import '../models/image_model.dart';
+
+class ApiService {
+  Future<List<RepoModel>> fetchRepos() async {
+    final response = await http.get(Uri.parse('https://api.github.com/gists/public'));
+    if (response.statusCode == 200) {
+      List data = json.decode(response.body);
+      return data.map((json) => RepoModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load repos');
+    }
+  }
+
+  Future<List<ImageModel>> fetchImages() async {
+    final response = await http.get(Uri.parse('https://api.unsplash.com/photos?client_id=YOUR_UNSPLASH_API_KEY'));
+    if (response.statusCode == 200) {
+      List data = json.decode(response.body);
+      return data.map((json) => ImageModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to load images');
+    }
+  }
+}
+
+> Note: Replace YOUR_UNSPLASH_API_KEY with your Unsplash API key.
+5. Caching with cache_helper.dart
+
+This helper class manages caching data locally.
+
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class CacheHelper {
+  Future<void> saveData(String key, List<dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setString(key, json.encode(data));
+  }
+
+  Future<List<dynamic>?> getData(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    String? jsonString = prefs.getString(key);
+    return jsonString != null ? json.decode(jsonString) : null;
+  }
+}
+Additional Files and Further Implementation
+
+The remaining screens (e.g., repo_list_screen.dart, gallery_screen.dart, full_image_screen.dart) should use FutureBuilder to fetch data using ApiService and display it in appropriate layouts. 
+
+
