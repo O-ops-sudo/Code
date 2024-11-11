@@ -1,0 +1,94 @@
+User Authentication System with JWT, FastAPI, and MongoDB
+Project Overview
+This project implements a user authentication system with JSON Web Tokens (JWT) for secure login, user management, and role-based access control (RBAC). The backend is built using FastAPI, with MongoDB for data storage.
+Prerequisites
+
+To run this project, ensure you have the following installed:
+
+Python 3.x or higher
+MongoDB (or MongoDB Atlas for cloud database)
+pip (Python package manager)
+
+
+Installation Steps
+
+1. Clone the repository:
+git clone <repository-url>
+cd <project-directory>
+2. Install dependencies: Run the following command to install all the required Python packages:
+pip install -r requirements.txt
+Alternatively, you can install the packages individually:
+pip install fastapi uvicorn pymongo python-jose passlib
+API Endpoints
+
+1. POST /create_user/:
+Creates a new user in the database. The request body should include username, email, and password.
+Passwords are securely hashed before storing.
+2. POST /login/:
+Allows users to log in and receive a JWT token. The token is used for subsequent requests to protected endpoints.
+3. GET /secure_data/:
+A protected endpoint that requires a valid JWT token for access. It returns secure data to authenticated users.
+4. GET /get_user/{username}:
+Fetches user details (like username and email) from the database. This endpoint requires a valid JWT token.
+5. GET /admin_dashboard/:
+A protected endpoint for users with the "admin" role. Ensures Role-Based Access Control (RBAC) by checking user roles in the token.
+
+JWT Authentication
+Users authenticate using a username and password. Upon successful login, they receive an access token (JWT), which must be included in the Authorization header for accessing protected endpoints.
+
+Logging
+
+The system includes logging for key actions, such as:
+
+User creation
+
+User login
+
+Access to secure data
+
+Any role-based access attempts
+
+
+
+Role-Based Access Control (RBAC)
+
+Users can have roles like "admin" or "user". The admin role can access restricted endpoints like /admin_dashboard/.
+
+
+MongoDB Setup
+
+The project is designed to work with MongoDB for storing user data. You can use a local MongoDB instance or MongoDB Atlas (cloud-hosted MongoDB service) for database hosting.
+
+
+Running the Application
+
+1. To run the application locally, use the following command:
+
+uvicorn main:app --reload
+
+This will start the FastAPI server at http://localhost:8000.
+
+
+2. Access the interactive API documentation at:
+
+Swagger UI: http://localhost:8000/docs
+
+ReDoc: http://localhost:8000/redoc
+
+
+
+
+Deployment
+
+This application can be deployed to any cloud platform that supports FastAPI, such as Heroku, Vercel, or Render for free serverless hosting.
+
+Conclusion
+
+This backend system enables secure user authentication with JWT, MongoDB as the data store, and includes role-based access control for enhanced security.
+
+
+---
+
+This README includes the installation steps, API endpoint descriptions, JWT authentication, RBAC, logging, and MongoDB setup, all of which are key components of the project.
+
+         
