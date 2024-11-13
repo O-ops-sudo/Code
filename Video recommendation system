@@ -1,0 +1,92 @@
+import requests
+import pandas as pd
+import numpy as np
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics import average_precision_score
+
+# Set up the base URL and headers
+base_url = "https://api.socialverseapp.com"
+headers = {
+    "Flic-Token": "flic_1e01009f9c1a54706f385bcc1993a08fd9647ba8f499572d280654d1c03c47bf"
+}
+
+def fetch_data(endpoint):
+    """Fetch data from API endpoint."""
+    response = requests.get(f"{base_url}/{endpoint}", headers=headers)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Failed to fetch data from {endpoint}: {response.status_code}")
+        return None
+
+# Fetch all datasets
+viewed_posts = fetch_data("posts/view?page=1&page_size=1000&resonance_algorithm=resonance_algorithm_cjsvervb7dbhss8bdrj89s44jfjdbsjd0xnjkbvuire8zcjwerui3njfbvsujc5if")
+liked_posts = fetch_data("posts/like?page=1&page_size=5&resonance_algorithm=resonance_algorithm_cjsvervb7dbhss8bdrj89s44jfjdbsjd0xnjkbvuire8zcjwerui3njfbvsujc5if")
+ratings = fetch_data("posts/rating?page=1&page_size=5&resonance_algorithm=resonance_algorithm_cjsvervb7dbhss8bdrj89s44jfjdbsjd0xnjkbvuire8zcjwerui3njfbvsujc5if")
+posts = fetch_data("posts/summary/get?page=1&page_size=1000")
+users = fetch_data("users/get_all?page=1&page_size=1000")
+
+# Convert JSON data to pandas DataFrames
+viewed_df = pd.DataFrame(viewed_posts)
+liked_df = pd.DataFrame(liked_posts)
+ratings_df = pd.DataFrame(ratings)
+posts_df = pd.DataFrame(posts)
+users_df = pd.DataFrame(users)
+
+# Data Preprocessing: Handle missing values
+posts_df.fillna("", inplace=True)
+ratings_df['rating'] = ratings_df['rating'].astype(float)  # Ensure ratings are numeric
+
+# Content-Based Filtering: Using TF-IDF on video descriptions or tags
+tfidf = TfidfVectorizer(stop_words='english')
+tfidf_matrix = tfidf.fit_transform(posts_df['description'])  # Assuming 'description' is a column in posts_df
+cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
+
+# Collaborative Filtering: Create a user-item interaction matrix
+interaction_matrix = ratings_df.pivot(index='user_id', columns='post_id', values='rating').fillna(0)
+user_similarity = cosine_similarity(interaction_matrix)
+
+def get_hybrid_recommendations(user_id, top_n=5):
+    """Get hybrid recommendations for a user."""
+    # Get content-based recommendations
+    user_viewed_posts = viewed_df[viewed_df['user_id'] == user_id]['post_id'].values
+    if len(user_viewed_posts) == 0:
+        return posts_df.sample(top_n)  # For new users, return random posts
+
+    user_content_sim = np.mean([cosine_sim[post_id] for post_id in user_viewed_posts], axis=0)
+
+    # Get collaborative recommendations
+    if user_id in interaction_matrix.index:
+        user_collab_sim = user_similarity[interaction_matrix.index.get_loc(user_id)]
+    else:
+        user_collab_sim = np.zeros_like(user_content_sim)  # For new users with no ratings
+
+    # Combine content and collaborative filtering results
+    hybrid_scores = 0.5 * user_content_sim + 0.5 * user_collab_sim
+    top_recommendations_indices = hybrid_scores.argsort()[-top_n:][::-1]
+    return posts_df.iloc[top_recommendations_indices]
+
+# Evaluation: Example with dummy data
+def evaluate_recommendations():
+    """Evaluate the recommendation system using CTR and MAP."""
+    # Dummy user click and relevance data
+    user_clicks = [1, 0, 1, 1, 0]  # Clicks for recommended videos
+    true_relevance = [1, 1, 1, 0, 0]  # Relevance for recommended videos
+
+    # Calculate Click-Through Rate (CTR)
+    ctr = sum(user_clicks) / len(user_clicks)
+    print(f"CTR: {ctr}")
+
+    # Calculate Mean Average Precision (MAP)
+    map_score = average_precision_score(true_relevance, user_clicks)
+    print(f"Mean Average Precision (MAP): {map_score}")
+
+# Example usage
+user_id_example = users_df['user_id'].iloc[0]  # Use the first user as an example
+recommendations = get_hybrid_recommendations(user_id_example, top_n=5)
+print("Top Recommendations:")
+print(recommendations[['post_id', 'title', 'description']])  # Assuming 'title' and 'description' columns are present
+
+# Evaluate recommendations
+evaluate_recommendations()
