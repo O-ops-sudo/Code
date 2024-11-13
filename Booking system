@@ -1,0 +1,167 @@
+1. Create a new project folder and navigate to it:
+
+mkdir booking-system && cd booking-system
+
+
+2. Initialize a Node.js project:
+
+npm init -y
+
+
+3. Install the necessary dependencies:
+
+npm install express firebase-admin firebase
+
+
+4. Create a file named app.js and paste the code below into it:
+
+
+
+// app.js
+const express = require('express');
+const admin = require('firebase-admin');
+const firebase = require('firebase');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Initialize Firebase Admin SDK
+admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+});
+const db = admin.firestore();
+
+// Firebase Client SDK configuration
+const firebaseConfig = {
+    apiKey: "your-api-key",
+    authDomain: "your-auth-domain",
+    projectId: "your-project-id",
+    storageBucket: "your-storage-bucket",
+    messagingSenderId: "your-messaging-sender-id",
+    appId: "your-app-id"
+};
+firebase.initializeApp(firebaseConfig);
+
+// Endpoint to set availability for instructors
+app.post('/setAvailability', async (req, res) => {
+    const { instructorId, availableSlots } = req.body;
+    try {
+        await db.collection('instructors').doc(instructorId).set({ availableSlots });
+        res.status(200).send('Availability set successfully');
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+});
+
+// Endpoint to book a slot
+app.post('/bookSlot', async (req, res) => {
+    const { instructorId, studentId, slot } = req.body;
+    try {
+        const instructorRef = db.collection('instructors').doc(instructorId);
+        const instructorDoc = await instructorRef.get();
+
+        if (!instructorDoc.exists) {
+            return res.status(404).send('Instructor not found');
+        }
+
+        const availableSlots = instructorDoc.data().availableSlots || [];
+        if (!availableSlots.includes(slot)) {
+            return res.status(400).send('Slot not available');
+        }
+
+        await instructorRef.update({
+            availableSlots: availableSlots.filter(s => s !== slot),
+        });
+
+        await db.collection('bookings').add({
+            instructorId,
+            studentId,
+            slot,
+        });
+
+        res.status(200).send('Slot booked successfully');
+    } catch (error) {
+        res.status(500).send(error.message);
+    }
+});
+
+// Serve HTML form as a basic frontend
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Start the server
+app.listen(3000, () => console.log('Server running on http://localhost:3000'));
+
+5. Create a public folder and add an index.html file for the frontend:
+
+
+
+public/index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PocketClass Booking System</title>
+</head>
+<body>
+    <h1>Instructor Interface</h1>
+    <input id="instructorId" placeholder="Instructor ID" />
+    <textarea id="availableSlots" placeholder="Available Slots (e.g., ['2023-11-15 10:00', '2023-11-15 11:00'])"></textarea>
+    <button onclick="setAvailability()">Set Availability</button>
+
+    <h1>Student Interface</h1>
+    <input id="studentId" placeholder="Student ID" />
+    <input id="slot" placeholder="Slot to Book" />
+    <button onclick="bookSlot()">Book Slot</button>
+
+    <script>
+        async function setAvailability() {
+            const instructorId = document.getElementById('instructorId').value;
+            const availableSlots = JSON.parse(document.getElementById('availableSlots').value);
+            const response = await fetch('/setAvailability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instructorId, availableSlots }),
+            });
+            alert(await response.text());
+        }
+
+        async function bookSlot() {
+            const instructorId = document.getElementById('instructorId').value;
+            const studentId = document.getElementById('studentId').value;
+            const slot = document.getElementById('slot').value;
+            const response = await fetch('/bookSlot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instructorId, studentId, slot }),
+            });
+            alert(await response.text());
+        }
+    </script>
+</body>
+</html>
+
+6. Run the application:
+
+node app.js
+
+
+7. Access the app: Open http://localhost:3000 in your browser.
+
+
+
+Explanation of the Code
+
+The Node.js backend (app.js) includes endpoints to set availability for instructors and book slots for students.
+
+The Firebase setup is done with both firebase-admin (for server-side functions) and firebase (for frontend).
+
+The index.html provides a basic frontend for setting availability and booking slots.
+
+
+replace firebaseConfig with your actual Firebase project configuration details. This single terminal setup should allow you to perform the basic functionalities as per the assessment's requirements. Let me know if you have questions or need further adjustments!
+
