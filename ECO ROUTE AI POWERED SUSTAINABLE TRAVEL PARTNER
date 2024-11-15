@@ -1,0 +1,91 @@
+Project Title: "EcoRoute: AI-Powered Sustainable Travel Planner"
+Domain: Sustainability and AI
+Description: An app that calculates the most eco-friendly route for a trip, considering carbon emissions, cost, and time. It uses public transport data and recommends travel modes to reduce your carbon footprint.
+
+Features:
+
+1. Input travel destination and origin.
+
+
+2. Use APIs (Google Maps, OpenWeather) to fetch route options.
+
+
+3. Display carbon footprint, cost, and time for each option.
+
+
+4. Recommend the best eco-friendly route.
+
+
+
+Tech Stack: Python (Flask), HTML/CSS, JavaScript
+
+
+---
+
+Code:
+
+Backend (Flask):
+
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+@app.route('/route', methods=['POST'])
+def calculate_route():
+    data = request.json
+    origin = data['origin']
+    destination = data['destination']
+
+    # Mock API Call to Fetch Routes (replace with Google Maps API)
+    routes = [
+        {"mode": "Car", "time": 30, "cost": 5, "carbon": 10},
+        {"mode": "Bus", "time": 40, "cost": 2, "carbon": 3},
+        {"mode": "Bike", "time": 50, "cost": 0, "carbon": 1}
+    ]
+
+    # Recommend based on lowest carbon
+    recommended = min(routes, key=lambda x: x['carbon'])
+    return jsonify({"routes": routes, "recommended": recommended})
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+Frontend (HTML/JavaScript):
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EcoRoute</title>
+</head>
+<body>
+    <h1>EcoRoute: Plan Your Travel</h1>
+    <form id="routeForm">
+        <input type="text" id="origin" placeholder="Enter origin" required>
+        <input type="text" id="destination" placeholder="Enter destination" required>
+        <button type="submit">Find Routes</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('routeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const origin = document.getElementById('origin').value;
+            const destination = document.getElementById('destination').value;
+
+            const response = await fetch('http://127.0.0.1:5000/route', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({origin, destination})
+            });
+            const data = await response.json();
+            document.getElementById('result').innerHTML = `
+                <h3>Recommended: ${data.recommended.mode}</h3>
+                <p>Carbon: ${data.recommended.carbon}</p>
+                <p>Time: ${data.recommended.time} mins</p>
+                <p>Cost: $${data.recommended.cost}</p>
+            `;
+        });
+    </script>
+</body>
+</html>
