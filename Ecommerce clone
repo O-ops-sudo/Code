@@ -1,0 +1,158 @@
+1. Create and Set Up the Project:
+
+# Initialize Vite Project with React and TypeScript
+npm create vite@latest ecom-catalog --template react-ts
+cd ecom-catalog
+
+# Install dependencies
+npm install axios @reduxjs/toolkit react-redux react-router-dom tailwindcss postcss autoprefixer
+
+# Set up Tailwind CSS
+npx tailwindcss init
+
+# Install testing libraries (Optional, for bonus tasks)
+npm install --save-dev jest @testing-library/react @testing-library/react-hooks @testing-library/jest-dom
+
+
+2. Configure Tailwind CSS:
+
+Update tailwind.config.js:
+
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+
+Add Tailwind directives in src/index.css:
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+3. Set Up Redux Store and Slice:
+
+Create src/store.ts:
+
+import { configureStore } from '@reduxjs/toolkit';
+import productReducer from './features/productSlice';
+
+const store = configureStore({
+  reducer: {
+    products: productReducer,
+  },
+});
+
+export type RootState = ReturnType<typeof store.getState>;
+export type AppDispatch = typeof store.dispatch;
+export default store;
+
+Create src/features/productSlice.ts:
+
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
+
+interface Product {
+  id: number;
+  title: string;
+  price: number;
+  image: string;
+  rating: { rate: number; count: number };
+}
+
+interface ProductState {
+  data: Product[];
+  status: 'idle' | 'loading' | 'success' | 'error';
+  searchTerm: string;
+}
+
+const initialState: ProductState = {
+  data: [],
+  status: 'idle',
+  searchTerm: '',
+};
+
+export const fetchProducts = createAsyncThunk('products/fetch', async () => {
+  const response = await axios.get('https://fakestoreapi.com/products');
+  return response.data;
+});
+
+const productSlice = createSlice({
+  name: 'products',
+  initialState,
+  reducers: {
+    setSearchTerm(state, action) {
+      state.searchTerm = action.payload;
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(fetchProducts.pending, (state) => {
+      state.status = 'loading';
+    });
+    builder.addCase(fetchProducts.fulfilled, (state, action) => {
+      state.status = 'success';
+      state.data = action.payload;
+    });
+    builder.addCase(fetchProducts.rejected, (state) => {
+      state.status = 'error';
+    });
+  },
+});
+
+export const { setSearchTerm } = productSlice.actions;
+export default productSlice.reducer;
+
+
+
+4. Build the App Component: Update src/App.tsx:
+
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchProducts, setSearchTerm } from './features/productSlice';
+import { RootState } from './store';
+
+const App: React.FC = () => {
+  const dispatch = useDispatch();
+  const { data, searchTerm, status } = useSelector((state: RootState) => state.products);
+
+  useEffect(() => {
+    dispatch(fetchProducts());
+  }, [dispatch]);
+
+  const filteredProducts = data.filter((product) =>
+    product.title.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (status === 'loading') return <p>Loading...</p>;
+  if (status === 'error') return <p>Error loading products!</p>;
+
+  return (
+    <div className="p-4">
+      <input
+        type="text"
+        placeholder="Search..."
+        className="p-2 border rounded w-full mb-4"
+        onChange={(e) => dispatch(setSearchTerm(e.target.value))}
+      />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {filteredProducts.map((product) => (
+          <div key={product.id} className="border p-4 rounded shadow">
+            <img src={product.image} alt={product.title} className="w-full h-40 object-cover mb-2" />
+            <h2 className="font-bold">{product.title}</h2>
+            <p>${product.price}</p>
+            <p>{product.rating.rate} / 5</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default App;
+
+
+5. Deploy to Vercel:
